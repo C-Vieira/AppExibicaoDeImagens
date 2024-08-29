@@ -2,7 +2,6 @@ package com.example.appexibicaodeimagens
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -17,8 +16,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-import com.bumptech.glide.request.RequestOptions
-import com.bumptech.glide.request.target.ViewTarget
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
 
@@ -100,7 +97,8 @@ class MainActivity : AppCompatActivity() {
 
             var url = listaDeURLs.random()
 
-            if(!URLUtil.isAssetUrl(url)){
+            //Check if url is working or not
+            if(!URLUtil.isValidUrl(url)){
                 url = placeholderURL
 
                 Glide.with(this).load(url)

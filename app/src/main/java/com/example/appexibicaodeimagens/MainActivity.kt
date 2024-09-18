@@ -1,26 +1,36 @@
 package com.example.appexibicaodeimagens
 
-import android.app.Activity
-import android.content.Intent
+import android.Manifest.permission.CAMERA
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
-import android.widget.Button
-import android.widget.ImageView
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.example.appexibicaodeimagens.databinding.ActivityMainBinding
+import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val REQUEST_IMAGE_CAPTURE = 1
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            onPermissionResult(isGranted)
+        }
+
+    private val getContent =
+        registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
+            displayImage(bitmap)
+        }
 
     private val listaDeURLs = listOf(
         "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0",
@@ -90,37 +100,71 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("TESTE", "Passando por: OnCreate")
 
-        val imageView: ImageView = binding.imageView
-        val nextButton: Button = binding.nextButton
-        val cameraButton: Button = binding.cameraButton
+        displayImage()
 
-        Glide.with(this).load(listaDeURLs[0]).centerCrop().into(imageView)
-
-        nextButton.setOnClickListener{
-            val placeholderURL = "https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
-            val url = listaDeURLs.random()
-
-            Glide.with(this).load(url)
-                .error(placeholderURL)
-                .placeholder(ColorDrawable(Color.LTGRAY))
-                .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
-                .into(imageView)
+        binding.nextButton.setOnClickListener{
+            displayImage()
         }
 
-        cameraButton.setOnClickListener{
-            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            startActivityForResult(cameraIntent, REQUEST_IMAGE_CAPTURE)
+        binding.cameraButton.setOnClickListener{
+            imageCapture()
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+    private fun imageCapture(){
+        when{
+            ContextCompat.checkSelfPermission(
+                this,
+                CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                getContent.launch(null)
+            }
 
-        if(requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK){
-            val image: Bitmap? = data!!.getParcelableExtra("data")
-            Glide.with(this).load(image).centerCrop().into(binding.imageView)
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                CAMERA,
+            ) -> {
+                showCameraPermissionRationale(askAgain = true)
+            }
+
+            else -> {
+                requestPermissionLauncher.launch(CAMERA)
+            }
         }
+    }
+
+    private fun onPermissionResult(isGranted: Boolean){
+        if(isGranted){
+            getContent.launch(null)
+        }else{
+            showCameraPermissionRationale(askAgain = false)
+        }
+    }
+
+    private fun showCameraPermissionRationale(askAgain: Boolean){
+        val snackbar = Snackbar.make(
+            findViewById(android.R.id.content),
+            "Permission is Needed for Camera Access",
+            Snackbar.LENGTH_LONG
+        )
+        if(askAgain){
+            snackbar.setAction("Grant"){
+                requestPermissionLauncher.launch(CAMERA)
+            }
+        }
+        snackbar.show()
+    }
+
+    private fun displayImage(image: Any? = null){
+        val placeholderURL = "https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
+        val random = listaDeURLs.random()
+
+        Glide.with(this).load(image ?: random)
+            .error(placeholderURL)
+            .placeholder(ColorDrawable(Color.LTGRAY))
+            .centerCrop()
+            .transition(DrawableTransitionOptions.withCrossFade())
+            .into(binding.imageView)
     }
 
     override fun onStart() {
